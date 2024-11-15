@@ -24,7 +24,7 @@ public class StatisticsCollector {
         totalRequests++;
         totalResponseSize += record.getSize();
         responseSizes.add(record.getSize());
-        
+
         int status = record.getStatus();
         statusCount.computeIfAbsent(status, k -> new AtomicInteger(0)).incrementAndGet();
 
