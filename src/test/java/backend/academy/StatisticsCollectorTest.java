@@ -1,19 +1,48 @@
 package backend.academy;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-
 import java.time.ZonedDateTime;
 import java.util.Map;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class StatisticsCollectorTest {
 
     @Test
     public void testCollect() {
         StatisticsCollector stats = new StatisticsCollector();
-        LogRecord record1 = new LogRecord("192.168.1.1", "-", ZonedDateTime.parse("2024-08-31T10:00:00Z"), "GET /index.html HTTP/1.1", 200, 500, "-", "Mozilla/5.0");
-        LogRecord record2 = new LogRecord("192.168.1.2", "-", ZonedDateTime.parse("2024-08-31T10:05:00Z"), "POST /submit HTTP/1.1", 404, 300, "-", "curl/7.68.0");
-        LogRecord record3 = new LogRecord("192.168.1.3", "-", ZonedDateTime.parse("2024-08-31T10:10:00Z"), "GET /index.html HTTP/1.1", 200, 700, "-", "Mozilla/5.0");
+
+        LogRecord record1 = new LogRecord.Builder()
+            .setIp("192.168.1.1")
+            .setUser("-")
+            .setTime(ZonedDateTime.parse("2024-08-31T10:00:00Z"))
+            .setRequest("GET /index.html HTTP/1.1")
+            .setStatus(200)
+            .setSize(500)
+            .setReferer("-")
+            .setAgent("Mozilla/5.0")
+            .build();
+
+        LogRecord record2 = new LogRecord.Builder()
+            .setIp("192.168.1.2")
+            .setUser("-")
+            .setTime(ZonedDateTime.parse("2024-08-31T10:05:00Z"))
+            .setRequest("POST /submit HTTP/1.1")
+            .setStatus(404)
+            .setSize(300)
+            .setReferer("-")
+            .setAgent("curl/7.68.0")
+            .build();
+
+        LogRecord record3 = new LogRecord.Builder()
+            .setIp("192.168.1.3")
+            .setUser("-")
+            .setTime(ZonedDateTime.parse("2024-08-31T10:10:00Z"))
+            .setRequest("GET /index.html HTTP/1.1")
+            .setStatus(200)
+            .setSize(700)
+            .setReferer("-")
+            .setAgent("Mozilla/5.0")
+            .build();
 
         stats.collect(record1);
         stats.collect(record2);

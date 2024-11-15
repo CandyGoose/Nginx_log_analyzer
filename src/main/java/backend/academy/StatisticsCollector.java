@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StatisticsCollector {
+    private static final double PERCENTILE_95 = 0.95;
+
     private int totalRequests = 0;
     private long totalResponseSize = 0;
     private List<Integer> responseSizes = new ArrayList<>();
@@ -25,23 +27,23 @@ public class StatisticsCollector {
     /**
      * Сбор данных из записи лога.
      *
-     * @param record Запись лога
+     * @param logEntry Запись лога
      */
-    public void collect(LogRecord record) {
+    public void collect(LogRecord logEntry) {
         totalRequests++;
-        totalResponseSize += record.getSize();
-        responseSizes.add(record.getSize());
+        totalResponseSize += logEntry.getSize();
+        responseSizes.add(logEntry.getSize());
 
-        String resource = record.getRequestResource();
+        String resource = logEntry.getRequestResource();
         resourceCount.computeIfAbsent(resource, k -> new AtomicInteger(0)).incrementAndGet();
 
-        int status = record.getStatus();
+        int status = logEntry.getStatus();
         statusCount.computeIfAbsent(status, k -> new AtomicInteger(0)).incrementAndGet();
 
-        String method = record.getRequestMethod();
+        String method = logEntry.getRequestMethod();
         methodCount.computeIfAbsent(method, k -> new AtomicInteger(0)).incrementAndGet();
 
-        ZonedDateTime recordTime = record.getTime();
+        ZonedDateTime recordTime = logEntry.getTime();
         if (minDate == null || recordTime.isBefore(minDate)) {
             minDate = recordTime;
         }
@@ -63,7 +65,7 @@ public class StatisticsCollector {
             return 0;
         }
         Collections.sort(responseSizes);
-        int index = (int) Math.ceil(0.95 * responseSizes.size()) - 1;
+        int index = (int) Math.ceil(PERCENTILE_95 * responseSizes.size()) - 1;
         return responseSizes.get(index);
     }
 
@@ -72,15 +74,11 @@ public class StatisticsCollector {
     }
 
     public Map<Integer, Integer> getStatusCodes() {
-        Map<Integer, Integer> result = new HashMap<>();
-        statusCount.forEach((k, v) -> result.put(k, v.get()));
-        return result;
+        return convertAtomicMapToIntegerMap(statusCount);
     }
 
     public Map<String, Integer> getHttpMethods() {
-        Map<String, Integer> result = new HashMap<>();
-        methodCount.forEach((k, v) -> result.put(k, v.get()));
-        return result;
+        return convertAtomicMapToIntegerMap(methodCount);
     }
 
     public ZonedDateTime getMinDate() {
@@ -95,9 +93,17 @@ public class StatisticsCollector {
     private <K> Map<K, Integer> getTopEntries(Map<K, AtomicInteger> map, int limit) {
         Map<K, Integer> result = new LinkedHashMap<>();
         map.entrySet().stream()
-            .sorted(Map.Entry.<K, AtomicInteger>comparingByValue(Comparator.comparingInt(AtomicInteger::get)).reversed())
+            .sorted(Map.Entry.<K, AtomicInteger>comparingByValue(Comparator.comparingInt(AtomicInteger::get))
+                .reversed())
             .limit(limit)
             .forEach(e -> result.put(e.getKey(), e.getValue().get()));
+        return result;
+    }
+
+    // Метод для конвертации карты AtomicInteger в Integer
+    private <K> Map<K, Integer> convertAtomicMapToIntegerMap(Map<K, AtomicInteger> map) {
+        Map<K, Integer> result = new HashMap<>();
+        map.forEach((k, v) -> result.put(k, v.get()));
         return result;
     }
 }

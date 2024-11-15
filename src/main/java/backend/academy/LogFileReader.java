@@ -34,10 +34,10 @@ public class LogFileReader {
         ZonedDateTime fromTime = fromStr != null ? ZonedDateTime.parse(fromStr) : null;
         ZonedDateTime toTime = toStr != null ? ZonedDateTime.parse(toStr) : null;
 
-        Consumer<LogRecord> filterConsumer = record -> {
+        Consumer<LogRecord> filterConsumer = logEntry -> {
             boolean matches = true;
             if (filterField != null && filterValue != null) {
-                String fieldValue = getFieldValue(record, filterField);
+                String fieldValue = getFieldValue(logEntry, filterField);
                 if (fieldValue == null) {
                     matches = false;
                 } else {
@@ -46,7 +46,7 @@ public class LogFileReader {
                 }
             }
             if (matches) {
-                statsCollector.collect(record);
+                statsCollector.collect(logEntry);
             }
         };
 
@@ -70,28 +70,24 @@ public class LogFileReader {
         }
     }
 
-    private String getFieldValue(LogRecord record, String field) {
-        switch (field.toLowerCase()) {
-            case "agent":
-                return record.getAgent();
-            case "method":
-                return record.getRequestMethod();
-            case "resource":
-                return record.getRequestResource();
-            case "status":
-                return String.valueOf(record.getStatus());
-            case "ip":
-                return record.getIp();
-            case "user":
-                return record.getUser();
-            default:
+    private String getFieldValue(LogRecord logEntry, String field) {
+        return switch (field.toLowerCase()) {
+            case "agent" -> logEntry.getAgent();
+            case "method" -> logEntry.getRequestMethod();
+            case "resource" -> logEntry.getRequestResource();
+            case "status" -> String.valueOf(logEntry.getStatus());
+            case "ip" -> logEntry.getIp();
+            case "user" -> logEntry.getUser();
+            default -> {
                 LOGGER.warn("Неизвестное поле для фильтрации: {}", field);
-                return null;
-        }
+                yield null;
+            }
+        };
     }
 
     /**
-     * Обрабатывает поток логов, парсит строки и передает данные в StatisticsCollector или применяет пользовательский фильтр.
+     * Обрабатывает поток логов, парсит строки и передает данные в StatisticsCollector
+     * или применяет пользовательский фильтр.
      *
      * @param reader         Поток для чтения строк (например, файл или URL)
      * @param parser         Экземпляр LogParser для разбора строк лога
@@ -103,11 +99,11 @@ public class LogFileReader {
         Consumer<LogRecord> filterConsumer) {
         new BufferedReader(reader).lines().forEach(line -> {
             try {
-                LogRecord record = parser.parse(line);
+                LogRecord logEntry = parser.parse(line);
                 // Фильтрация по времени
-                if ((fromTime == null || !record.getTime().isBefore(fromTime)) &&
-                    (toTime == null || !record.getTime().isAfter(toTime))) {
-                    filterConsumer.accept(record);
+                if ((fromTime == null || !logEntry.getTime().isBefore(fromTime))
+                    && (toTime == null || !logEntry.getTime().isAfter(toTime))) {
+                    filterConsumer.accept(logEntry);
                 }
             } catch (Exception e) {
                 LOGGER.error("Ошибка при разборе строки '{}': {}", line, e.getMessage(), e);
