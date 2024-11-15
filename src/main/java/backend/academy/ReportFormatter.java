@@ -54,6 +54,12 @@ public class ReportFormatter {
         appendRow(report, tableFormatter, "95-й перцентиль размера ответа", formatSize(stats.getPercentile95ResponseSize()));
         tableFormatter.accept(report, null);
 
+        report.append(formatHeader("Запрашиваемые ресурсы"));
+        tableFormatter.accept(report, "Ресурс | Количество");
+        stats.getTopResources(10)
+            .forEach((resource, count) -> appendRow(report, tableFormatter, "`" + resource + "`", numberFormat.format(count)));
+        tableFormatter.accept(report, null);
+
         report.append(formatHeader("Коды ответа"));
         tableFormatter.accept(report, "Код | Количество");
         stats.getStatusCodes()

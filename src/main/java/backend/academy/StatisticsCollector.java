@@ -7,10 +7,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StatisticsCollector {
     private int totalRequests = 0;
     private long totalResponseSize = 0;
-    private final List<Integer> responseSizes = new ArrayList<>();
+    private List<Integer> responseSizes = new ArrayList<>();
 
-    private final Map<String, AtomicInteger> resourceCount = new HashMap<>();
-    private final Map<Integer, AtomicInteger> statusCount = new HashMap<>();
+    private Map<String, AtomicInteger> resourceCount = new HashMap<>();
+    private Map<Integer, AtomicInteger> statusCount = new HashMap<>();
+    private Map<String, AtomicInteger> methodCount = new HashMap<>();
 
     private ZonedDateTime minDate = null;
     private ZonedDateTime maxDate = null;
@@ -25,8 +26,14 @@ public class StatisticsCollector {
         totalResponseSize += record.getSize();
         responseSizes.add(record.getSize());
 
+        String resource = record.getRequestResource();
+        resourceCount.computeIfAbsent(resource, k -> new AtomicInteger(0)).incrementAndGet();
+
         int status = record.getStatus();
         statusCount.computeIfAbsent(status, k -> new AtomicInteger(0)).incrementAndGet();
+
+        String method = record.getRequestMethod();
+        methodCount.computeIfAbsent(method, k -> new AtomicInteger(0)).incrementAndGet();
 
         ZonedDateTime recordTime = record.getTime();
         if (minDate == null || recordTime.isBefore(minDate)) {
@@ -61,6 +68,12 @@ public class StatisticsCollector {
     public Map<Integer, Integer> getStatusCodes() {
         Map<Integer, Integer> result = new HashMap<>();
         statusCount.forEach((k, v) -> result.put(k, v.get()));
+        return result;
+    }
+
+    public Map<String, Integer> getHttpMethods() {
+        Map<String, Integer> result = new HashMap<>();
+        methodCount.forEach((k, v) -> result.put(k, v.get()));
         return result;
     }
 

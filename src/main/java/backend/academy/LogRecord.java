@@ -23,12 +23,45 @@ public class LogRecord {
         this.agent = agent;
     }
 
-    public String getIp() { return ip; }
-    public String getUser() { return user; }
-    public ZonedDateTime getTime() { return time; }
-    public String getRequest() { return request; }
-    public int getStatus() { return status; }
-    public int getSize() { return size; }
-    public String getReferer() { return referer; }
-    public String getAgent() { return agent; }
+    public String getIp() {
+        return ip;
+    }
+
+    public String getUser() {
+        return user;
+    }
+
+    public ZonedDateTime getTime() {
+        return time;
+    }
+
+    public String getRequest() {
+        return request;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public String getReferer() {
+        return referer;
+    }
+
+    public String getAgent() {
+        return agent;
+    }
+
+    public String getRequestMethod() {
+        String[] parts = request.split(" ");
+        return parts.length > 0 ? parts[0] : "";
+    }
+
+    public String getRequestResource() {
+        String[] parts = request.split(" ");
+        return parts.length > 1 ? parts[1] : "";
+    }
 }
