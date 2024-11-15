@@ -1,8 +1,18 @@
 package backend.academy;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LogAnalyzerRunner {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(LogAnalyzerRunner.class);
 
     public void run(String[] args) {
         Options options = buildOptions();
@@ -28,15 +38,14 @@ public class LogAnalyzerRunner {
             ReportFormatter formatterReport = new ReportFormatter(format);
             String report = formatterReport.formatReport(statsCollector, path, from, to);
 
-            System.out.println(report);
+            LOGGER.info("Отчет успешно создан:\n{}", report);
 
         } catch (ParseException e) {
-            System.out.println(e.getMessage());
+            LOGGER.error("Ошибка парсинга аргументов: {}", e.getMessage());
             formatter.printHelp("analyzer", options);
             System.exit(1);
         } catch (Exception e) {
-            System.out.println("Ошибка: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.error("Ошибка выполнения программы: {}", e.getMessage(), e);
             System.exit(1);
         }
     }

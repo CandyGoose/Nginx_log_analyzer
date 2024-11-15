@@ -4,13 +4,20 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
-import java.nio.file.*;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LogFileReader {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(LogFileReader.class);
 
     /**
      * Читает лог-файлы и передает их записи в StatisticsCollector.
@@ -56,7 +63,7 @@ public class LogFileReader {
                         try (BufferedReader reader = Files.newBufferedReader(path)) {
                             processReader(reader, parser, fromTime, toTime, filterConsumer);
                         } catch (Exception e) {
-                            System.err.println("Ошибка при чтении файла " + path + ": " + e.getMessage());
+                            LOGGER.error("Ошибка при чтении файла {}: {}", path, e.getMessage(), e);
                         }
                     });
             }
@@ -78,6 +85,7 @@ public class LogFileReader {
             case "user":
                 return record.getUser();
             default:
+                LOGGER.warn("Неизвестное поле для фильтрации: {}", field);
                 return null;
         }
     }
@@ -102,7 +110,7 @@ public class LogFileReader {
                     filterConsumer.accept(record);
                 }
             } catch (Exception e) {
-                System.err.println("Ошибка при разборе строки: " + e.getMessage());
+                LOGGER.error("Ошибка при разборе строки '{}': {}", line, e.getMessage(), e);
             }
         });
     }
