@@ -34,7 +34,85 @@ public class LogFileReader {
         ZonedDateTime fromTime = fromStr != null ? ZonedDateTime.parse(fromStr) : null;
         ZonedDateTime toTime = toStr != null ? ZonedDateTime.parse(toStr) : null;
 
-        Consumer<LogRecord> filterConsumer = logEntry -> {
+        Consumer<LogRecord> filterConsumer = createFilterConsumer(statsCollector, filterField, filterValue);
+
+        if (isUrl(pathPattern)) {
+            processUrl(pathPattern, parser, fromTime, toTime, filterConsumer);
+        } else if (isGlobPattern(pathPattern)) {
+            processGlob(pathPattern, parser, fromTime, toTime, filterConsumer);
+        } else {
+            processPath(pathPattern, parser, fromTime, toTime, filterConsumer);
+        }
+    }
+
+    private boolean isUrl(String pathPattern) {
+        return pathPattern.startsWith("http://") || pathPattern.startsWith("https://");
+    }
+
+    private boolean isGlobPattern(String pathPattern) {
+        return pathPattern.contains("*") || pathPattern.contains("?");
+    }
+
+    private void processUrl(String url, LogParser parser, ZonedDateTime fromTime, ZonedDateTime toTime,
+        Consumer<LogRecord> filterConsumer) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(url).openStream()))) {
+            LOGGER.info("Чтение логов из URL: {}", url);
+            processReader(reader, parser, fromTime, toTime, filterConsumer);
+        } catch (Exception e) {
+            LOGGER.error("Ошибка при чтении URL '{}': {}", url, e.getMessage(), e);
+        }
+    }
+
+    private void processGlob(String globPattern, LogParser parser, ZonedDateTime fromTime, ZonedDateTime toTime,
+        Consumer<LogRecord> filterConsumer) {
+        LOGGER.info("Обработка GLOB-шаблона: {}", globPattern);
+        PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + globPattern);
+        Path basePath = Paths.get(".").toAbsolutePath().normalize();
+
+        try (Stream<Path> paths = Files.walk(basePath)) {
+            paths.filter(Files::isRegularFile)
+                .filter(matcher::matches)
+                .forEach(path -> processFile(path, parser, fromTime, toTime, filterConsumer));
+        } catch (Exception e) {
+            LOGGER.error("Ошибка при обработке GLOB-шаблона '{}': {}", globPattern, e.getMessage(), e);
+        }
+    }
+
+    private void processPath(String pathPattern, LogParser parser, ZonedDateTime fromTime, ZonedDateTime toTime,
+        Consumer<LogRecord> filterConsumer) {
+        Path path = Paths.get(pathPattern).toAbsolutePath().normalize();
+        LOGGER.info("Обрабатывается путь: {}", path);
+
+        if (Files.exists(path)) {
+            if (Files.isRegularFile(path)) {
+                processFile(path, parser, fromTime, toTime, filterConsumer);
+            } else if (Files.isDirectory(path)) {
+                try (Stream<Path> files = Files.list(path)) {
+                    files.filter(Files::isRegularFile)
+                        .forEach(file -> processFile(file, parser, fromTime, toTime, filterConsumer));
+                } catch (Exception e) {
+                    LOGGER.error("Ошибка при чтении директории '{}': {}", path, e.getMessage(), e);
+                }
+            } else {
+                LOGGER.error("Путь существует, но это не файл и не директория: {}", path);
+            }
+        } else {
+            LOGGER.error("Путь не найден: {}", path);
+        }
+    }
+
+    private void processFile(Path path, LogParser parser, ZonedDateTime fromTime, ZonedDateTime toTime,
+        Consumer<LogRecord> filterConsumer) {
+        try (BufferedReader reader = Files.newBufferedReader(path)) {
+            processReader(reader, parser, fromTime, toTime, filterConsumer);
+        } catch (Exception e) {
+            LOGGER.error("Ошибка при чтении файла '{}': {}", path, e.getMessage(), e);
+        }
+    }
+
+    private Consumer<LogRecord> createFilterConsumer(StatisticsCollector statsCollector,
+        String filterField, String filterValue) {
+        return logEntry -> {
             boolean matches = true;
             if (filterField != null && filterValue != null) {
                 String fieldValue = getFieldValue(logEntry, filterField);
@@ -49,25 +127,6 @@ public class LogFileReader {
                 statsCollector.collect(logEntry);
             }
         };
-
-        if (pathPattern.startsWith("http://") || pathPattern.startsWith("https://")) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(pathPattern).openStream()))) {
-                processReader(reader, parser, fromTime, toTime, filterConsumer);
-            }
-        } else {
-            PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + pathPattern);
-            try (Stream<Path> paths = Files.walk(Paths.get("."))) {
-                paths.filter(Files::isRegularFile)
-                    .filter(matcher::matches)
-                    .forEach(path -> {
-                        try (BufferedReader reader = Files.newBufferedReader(path)) {
-                            processReader(reader, parser, fromTime, toTime, filterConsumer);
-                        } catch (Exception e) {
-                            LOGGER.error("Ошибка при чтении файла {}: {}", path, e.getMessage(), e);
-                        }
-                    });
-            }
-        }
     }
 
     private String getFieldValue(LogRecord logEntry, String field) {
